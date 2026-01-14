@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Financial Times for Project Alpha for FY26</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root{
+      --bg:#fbfbfd;
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --card:#ffffff;
+      --stroke:#e5e7eb;
+
+      /* Pastel accents */
+      --p1:#E6F4FF; /* blue */
+      --p2:#EAF7EE; /* green */
+      --p3:#FFF2E5; /* peach */
+      --p4:#F3E8FF; /* lavender */
+      --p5:#FFE8F1; /* pink */
+      --p6:#F8FAE6; /* lemon */
+      --shadow: 0 10px 25px rgba(17, 24, 39, .08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg);
+      color:var(--ink);
+    }
+    header{
+      padding:18px 20px;
+      background:linear-gradient(90deg,var(--p1),var(--p4));
+      border-bottom:1px solid var(--stroke);
+    }
+    header h1{
+      margin:0 0 4px 0;
+      font-size:18px;
+      letter-spacing:.2px;
+    }
+    header p{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .wrap{
+      padding:14px 14px 18px;
+      max-width:1400px;
+      margin:0 auto;
+    }
+
+    /* Compact filter row */
+    .filters{
+      display:grid;
+      grid-template-columns: 220px 220px 260px 220px 1fr;
+      gap:10px;
+      align-items:end;
+      margin-bottom:12px;
+    }
+    .field label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 6px;
+    }
+    .btnrow{
+      display:flex; gap:10px; justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    button{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background:var(--card);
+      cursor:pointer;
+      color:var(--ink);
+      white-space:nowrap;
+    }
+    button.primary{
+      background:linear-gradient(90deg,var(--p2),var(--p1));
+      border:1px solid rgba(31,41,55,.08);
+    }
+
+    /* MultiSelect (compact dropdown) */
+    .ms{
+      position:relative;
+      width:100%;
+    }
+    .msBtn{
+      width:100%;
+      text-align:left;
+      padding:10px 10px;
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      background:var(--card);
+      cursor:pointer;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .msBtn .left{
+      display:flex; gap:8px; align-items:center; min-width:0;
+    }
+    .msBtn .pill{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(31,41,55,.10);
+      background:linear-gradient(90deg,var(--p6),#fff);
+      color:#374151;
+      flex:0 0 auto;
+    }
+    .msBtn .txt{
+      font-size:12px;
+      color:#111827;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      min-width:0;
+    }
+    .msBtn .caret{
+      color:#6b7280;
+      flex:0 0 auto;
+    }
+    .msPopover{
+      position:absolute;
+      top: calc(100% + 6px);
+      left:0;
+      right:0;
+      background:#fff;
+      border:1px solid var(--stroke);
+      border-radius:14px;
+      box-shadow: var(--shadow);
+      z-index:50;
+      display:none;
+      overflow:hidden;
+    }
+    .msPopover.open{ display:block; }
+    .msTop{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding:10px 10px 8px;
+      border-bottom:1px solid var(--stroke);
+      background:linear-gradient(90deg, #fff, var(--p6));
+    }
+    .msTop input{
+      flex:1 1 auto;
+      padding:8px 10px;
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      outline:none;
+      font-size:12px;
+    }
+    .msTop .mini{
+      font-size:11px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background:#fff;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .msList{
+      max-height: 220px;
+      overflow:auto;
+      padding:8px 10px 10px;
+    }
+    .msItem{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:7px 6px;
+      border-radius:10px;
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+    }
+    .msItem:hover{ background:rgba(17,24,39,.04); }
+    .msItem input{ margin:0; }
+    .msFooter{
+      padding:9px 10px;
+      border-top:1px solid var(--stroke);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:11px;
+      color:var(--muted);
+      background:#fff;
+    }
+
+    /* Main grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 340px 1fr 420px;
+      gap:12px;
+      align-items:stretch;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      min-height: 520px;
+    }
+    .card h2{
+      margin:0;
+      padding:12px 14px 10px;
+      font-size:14px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .badge{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(31,41,55,.10);
+      background:linear-gradient(90deg,var(--p6),var(--p5));
+      color:#374151;
+      white-space:nowrap;
+    }
+    .pane{
+      padding:12px 14px 14px;
+    }
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-bottom:12px;
+    }
+    .kpi{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:10px 10px 9px;
+      background:linear-gradient(180deg,var(--p1),#fff);
+    }
+    .kpi:nth-child(2){ background:linear-gradient(180deg,var(--p2),#fff); }
+    .kpi:nth-child(3){ background:linear-gradient(180deg,var(--p3),#fff); }
+    .kpi:nth-child(4){ background:linear-gradient(180deg,var(--p4),#fff); }
+    .kpi .t{ font-size:11px; color:var(--muted); margin-bottom:6px; }
+    .kpi .v{ font-size:16px; font-weight:700; letter-spacing:.2px; }
+    .kpi .s{ font-size:11px; color:var(--muted); margin-top:6px; }
+
+    .small{ font-size:12px; color:var(--muted); }
+    .legend{
+      display:flex; flex-wrap:wrap; gap:8px;
+      padding:10px 14px;
+      border-top:1px solid var(--stroke);
+      background:#fff;
+    }
+    .chip{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(31,41,55,.10);
+      background:#fff;
+    }
+    .chip i{
+      display:inline-block; width:10px; height:10px;
+      border-radius:3px; margin-right:6px; vertical-align:-1px;
+    }
+
+    /* Middle card (tree + compact Change Orders list) */
+    .midTop{
+      padding:10px 14px;
+      border-bottom:1px solid var(--stroke);
+      background:linear-gradient(90deg, #fff, var(--p1));
+      display:grid;
+      grid-template-columns: 1fr 180px;
+      gap:10px;
+      align-items:start;
+    }
+    .midTop .note{
+      font-size:12px;
+      color:#374151;
+    }
+    .coBox{
+      border:1px solid rgba(31,41,55,.12);
+      border-radius:14px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .coBox .t{
+      font-size:11px;
+      color:var(--muted);
+      padding:8px 10px;
+      border-bottom:1px solid var(--stroke);
+      background:linear-gradient(90deg, #fff, var(--p6));
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+    }
+    .coList{
+      padding:8px 10px 10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .coRow{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .coRow .l{
+      display:flex; align-items:center; gap:8px; min-width:0;
+    }
+    .coRow .tag{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(31,41,55,.10);
+      background:linear-gradient(90deg,var(--p5),#fff);
+      white-space:nowrap;
+    }
+    .coRow .amt{ font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    .coRow.active .tag{
+      border-color: rgba(17,24,39,.35);
+      box-shadow: 0 0 0 3px rgba(230,244,255,.8);
+    }
+
+    /* Tree area */
+    #tree{
+      width:100%;
+      height: 470px; /* slightly shorter to make room for CO box */
+      background: radial-gradient(circle at 20% 10%, var(--p1), transparent 40%),
+                  radial-gradient(circle at 80% 20%, var(--p5), transparent 45%),
+                  radial-gradient(circle at 30% 90%, var(--p2), transparent 45%),
+                  #fff;
+      display:block;
+    }
+    .node rect{
+      stroke: rgba(31,41,55,.18);
+      stroke-width:1;
+      rx:12;
+      ry:12;
+    }
+    .node text{
+      font-size:11px;
+      fill:#111827;
+    }
+    .node .sub{
+      font-size:10px;
+      fill:#374151;
+      opacity:.85;
+    }
+    .link{
+      fill:none;
+      stroke: rgba(31,41,55,.22);
+      stroke-width:1.2;
+    }
+    .selected rect{
+      stroke: rgba(17,24,39,.75);
+      stroke-width:1.8;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+    th,td{
+      padding:8px 8px;
+      border-bottom:1px solid var(--stroke);
+      text-align:left;
+    }
+    th{
+      color:var(--muted);
+      font-weight:600;
+      font-size:11px;
+      background:linear-gradient(90deg, #fff, var(--p6));
+    }
+    .mono{ font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    .right{ text-align:right; }
+
+    .hint{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:12px 14px;
+      border-top:1px solid var(--stroke);
+      background:linear-gradient(90deg, var(--p6), #fff);
+      font-size:12px;
+      color:#374151;
+    }
+    .dot{ width:10px;height:10px;border-radius:999px;background:#111827; margin-top:4px; opacity:.55; }
+
+    @media (max-width: 1100px){
+      .filters{ grid-template-columns: 1fr 1fr; }
+      .grid{ grid-template-columns: 1fr; }
+      .card{ min-height: auto; }
+      #tree{ height: 520px; }
+      .midTop{ grid-template-columns: 1fr; }
+    }
+
+    @media print{
+      .filters, .btnrow, header p{ display:none !important; }
+      #tree{ height: 700px; }
+      .card{ box-shadow:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Financial Times for Project Alpha for FY26</h1>
+    <p>Interactive financial flow (dummy data) — multi-select filters for Fiscal Year, Month, Flex ID, and CO.</p>
+  </header>
+
+  <div class="wrap">
+    <div class="filters">
+      <div class="field">
+        <label>Fiscal Year</label>
+        <div class="ms" id="msFY"></div>
+      </div>
+
+      <div class="field">
+        <label>Month</label>
+        <div class="ms" id="msMonth"></div>
+      </div>
+
+      <div class="field">
+        <label>Flex ID (7 digits)</label>
+        <div class="ms" id="msFlex"></div>
+      </div>
+
+      <div class="field">
+        <label>CO (alphanumeric)</label>
+        <div class="ms" id="msCO"></div>
+      </div>
+
+      <div class="btnrow">
+        <button id="apply" class="primary" type="button">Apply</button>
+        <button id="reset" type="button">Reset</button>
+        <button id="print" type="button">Print</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left: Summary -->
+      <section class="card">
+        <h2>
+          Summary
+          <span class="badge" id="activeFilters">FY26 • All Months • All Flex IDs • All CO</span>
+        </h2>
+        <div class="pane">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="t">Total Contract (Fees + Exp Cap)</div>
+              <div class="v mono" id="kpiContract">$—</div>
+              <div class="s">Includes cap-based expenses</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Projected Revenue</div>
+              <div class="v mono" id="kpiProjRev">$—</div>
+              <div class="s">Based on dummy projections</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Actuals Revenue</div>
+              <div class="v mono" id="kpiActRev">$—</div>
+              <div class="s">Filtered actuals</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Projected Margin</div>
+              <div class="v mono" id="kpiProjMargin">$—</div>
+              <div class="s">Revenue − cost − exp</div>
+            </div>
+          </div>
+
+          <div class="small">
+            <div><b>Click any node</b> in the flow to see details and related transactions.</div>
+            <div style="margin-top:6px">Layout mirrors the original flow: Contract → Fees/Expenses → COs → Projections & Actuals → WIP/Billing.</div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="chip"><i style="background:var(--p1)"></i>Revenue</span>
+          <span class="chip"><i style="background:var(--p3)"></i>Cost</span>
+          <span class="chip"><i style="background:var(--p2)"></i>Expenses</span>
+          <span class="chip"><i style="background:var(--p4)"></i>Margin / WIP</span>
+          <span class="chip"><i style="background:var(--p6)"></i>Billing</span>
+        </div>
+
+        <div class="hint">
+          <span class="dot"></span>
+          <div>
+            Tip: Use the compact Change Orders box (center card) to toggle COs quickly without taking extra space.
+          </div>
+        </div>
+      </section>
+
+      <!-- Middle: Tree -->
+      <section class="card">
+        <h2>
+          Financial Flow (Interactive)
+          <span class="badge">Collapse / expand</span>
+        </h2>
+
+        <div class="midTop">
+          <div class="note">
+            Pastel interactive tree (dummy data). Click nodes to drill into the right panel.
+          </div>
+
+          <div class="coBox">
+            <div class="t">
+              <span>Change Orders</span>
+              <span class="mono" id="coCount">—</span>
+            </div>
+            <div class="coList" id="coQuickList"></div>
+          </div>
+        </div>
+
+        <svg id="tree" role="img" aria-label="Financial flow tree"></svg>
+      </section>
+
+      <!-- Right: Details -->
+      <section class="card">
+        <h2>
+          Node details
+          <span class="badge" id="selectedNodeName">Select a node</span>
+        </h2>
+        <div class="pane">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="t">Amount</div>
+              <div class="v mono" id="kpiAmt">$—</div>
+              <div class="s" id="kpiAmtSub">—</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Budget / Cap</div>
+              <div class="v mono" id="kpiCap">$—</div>
+              <div class="s" id="kpiCapSub">—</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Variance</div>
+              <div class="v mono" id="kpiVar">$—</div>
+              <div class="s" id="kpiVarSub">—</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Count</div>
+              <div class="v mono" id="kpiCount">—</div>
+              <div class="s">Transactions</div>
+            </div>
+          </div>
+
+          <div class="small" style="margin:10px 0 10px">
+            Showing transactions mapped to the selected node (dummy data).
+          </div>
+
+          <div style="border:1px solid var(--stroke); border-radius:16px; overflow:hidden;">
+            <table>
+              <thead>
+                <tr>
+                  <th>FY</th>
+                  <th>Month</th>
+                  <th>Flex ID</th>
+                  <th>CO</th>
+                  <th>Type</th>
+                  <th class="right">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="txBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+/** ========= Utility ========= **/
+const months = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"]; // FY-style
+const fiscalYears = ["FY25","FY26","FY27"];
+
+const pastelByCategory = {
+  revenue: getComputedStyle(document.documentElement).getPropertyValue("--p1").trim(),
+  cost: getComputedStyle(document.documentElement).getPropertyValue("--p3").trim(),
+  expense: getComputedStyle(document.documentElement).getPropertyValue("--p2").trim(),
+  margin: getComputedStyle(document.documentElement).getPropertyValue("--p4").trim(),
+  billing: getComputedStyle(document.documentElement).getPropertyValue("--p6").trim(),
+  neutral: "#ffffff"
+};
+function fmtUSD(n){
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  const s = abs.toLocaleString(undefined, {maximumFractionDigits:0});
+  return sign + "$" + s;
+}
+// Deterministic PRNG
+function mulberry32(seed){
+  return function(){
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+function hashStr(str){
+  let h = 2166136261;
+  for (let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** ========= Shape architecture (same as before) ========= **/
+const FLOW = {
+  name: "Contract",
+  category: "neutral",
+  children: [
+    { name: "Fees and Exp", category: "neutral", children: [
+      { name: "Fees", category: "revenue", leafType: "fees" },
+      { name: "Expenses (Cap)", category: "expense", leafType: "exp_cap" }
+    ]},
+    { name: "Change Orders", category: "neutral", children: [
+      { name: "CO1", category: "revenue", leafType: "co1" },
+      { name: "CO2", category: "revenue", leafType: "co2" }
+    ]},
+    { name: "Projections & Actuals", category: "neutral", children: [
+      { name: "Projected revenue", category: "revenue", leafType: "proj_rev", children: [
+        { name: "Revenue remaining", category: "revenue", leafType: "rev_remaining" },
+        { name: "Actuals Revenue", category: "revenue", leafType: "act_rev", children: [
+          { name: "Billed (revenue)", category: "billing", leafType: "billed_rev" },
+          { name: "Remaining billable", category: "billing", leafType: "remaining_billable" }
+        ]}
+      ]},
+      { name: "Projected Cost", category: "cost", leafType: "proj_cost", children: [
+        { name: "Actual cost", category: "cost", leafType: "act_cost" },
+        { name: "Cost remaining", category: "cost", leafType: "cost_remaining" }
+      ]},
+      { name: "Projected Margin", category: "margin", leafType: "proj_margin", children: [
+        { name: "Actual Margin", category: "margin", leafType: "act_margin" },
+        { name: "Margin Remaining", category: "margin", leafType: "margin_remaining" }
+      ]},
+      { name: "WIP", category: "margin", children: [
+        { name: "Remaining projected WIP (Gain/Loss)", category: "margin", leafType: "wip_proj_remaining", children: [
+          { name: "Actual WIP", category: "margin", leafType: "wip_actual" },
+          { name: "WIP Remaining", category: "margin", leafType: "wip_remaining" }
+        ]}
+      ]},
+      { name: "Expenses & Billing", category: "neutral", children: [
+        { name: "Actual exp", category: "expense", leafType: "act_exp", children: [
+          { name: "Total Expense cap", category: "expense", leafType: "total_exp_cap" },
+          { name: "Remaining cap", category: "expense", leafType: "remaining_cap" },
+          { name: "Billable", category: "billing", children: [
+            { name: "Billable", category: "billing", leafType: "billable_total", children: [
+              { name: "To bill", category: "billing", leafType: "to_bill" },
+              { name: "Billed", category: "billing", leafType: "billed_fees" }
+            ]},
+            { name: "Unbillable", category: "billing", leafType: "unbillable" }
+          ]}
+        ]}
+      ]},
+      { name: "Accruals", category: "margin", leafType: "accruals" }
+    ]}
+  ]
+};
+
+/** ========= Master dummy data (supports multi-select filters without huge UI) ========= **/
+function buildFlexIds(){
+  const ids = [];
+  const base = 1000000;
+  for (let i=0;i<10;i++){
+    ids.push(String(base + Math.floor(100000 + i*7777 + (i*97)%1000)).slice(0,7));
+  }
+  return Array.from(new Set(ids)).slice(0,10);
+}
+const FLEX_IDS = buildFlexIds();
+const CO_CODES = ["CO1","CO2","COA7","COB2","CO9X","CO12","COZ8"];
+const LEAF_TYPES = [
+  "fees","exp_cap","co1","co2","proj_rev","rev_remaining","act_rev","billed_rev","remaining_billable",
+  "proj_cost","act_cost","cost_remaining",
+  "proj_margin","act_margin","margin_remaining",
+  "wip_proj_remaining","wip_actual","wip_remaining",
+  "act_exp","total_exp_cap","remaining_cap",
+  "billable_total","to_bill","billed_fees","unbillable",
+  "accruals"
+];
+function fyToYear(fy){
+  if (fy === "FY25") return 2025;
+  if (fy === "FY26") return 2026;
+  return 2027;
+}
+function generateMasterTransactions(){
+  const rand = mulberry32(hashStr("MASTER_TX_V2_COMPACT"));
+  const rows = [];
+  const n = 700;
+  for (let i=0;i<n;i++){
+    const fy = fiscalYears[Math.floor(rand()*fiscalYears.length)];
+    const month = months[Math.floor(rand()*months.length)];
+    const flexId = FLEX_IDS[Math.floor(rand()*FLEX_IDS.length)];
+    const co = CO_CODES[Math.floor(rand()*CO_CODES.length)];
+    const type = LEAF_TYPES[Math.floor(rand()*LEAF_TYPES.length)];
+    const day = 1 + Math.floor(rand()*28);
+
+    let amount;
+    if (type.includes("cost")) amount = -1*(200 + rand()*1800);
+    else if (type.includes("exp")) amount = -1*(50 + rand()*450);
+    else if (type.includes("wip")) amount = (rand()>.55?1:-1)*(50 + rand()*600);
+    else if (type.includes("margin")) amount = (rand()>.4?1:-1)*(80 + rand()*900);
+    else if (type.includes("unbillable")) amount = -1*(20 + rand()*240);
+    else if (type.includes("billed") || type.includes("billable") || type.includes("to_bill")) amount = (20 + rand()*500);
+    else amount = (150 + rand()*2500);
+
+    const scale = fy === "FY26" ? 1.0 : (fy === "FY25" ? 0.85 : 1.12);
+    amount = Math.round(amount * scale);
+
+    rows.push({ fy, month, flexId, co, type, amount, date: `${month} ${String(day).padStart(2,"0")}, ${fyToYear(fy)}` });
+  }
+  return rows;
+}
+const MASTER_TX = generateMasterTransactions();
+
+/** ========= Compact MultiSelect component ========= **/
+function createMultiSelect({
+  mountId,
+  labelPill,
+  options,
+  defaultSelected = null, // array or null for all
+  placeholderAll = "All selected"
+}){
+  const mount = document.getElementById(mountId);
+
+  const state = {
+    options: [...options],
+    selected: new Set(defaultSelected ?? options),
+    open: false,
+    search: ""
+  };
+
+  mount.innerHTML = `
+    <button class="msBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+      <span class="left">
+        <span class="pill">${labelPill}</span>
+        <span class="txt"></span>
+      </span>
+      <span class="caret">▾</span>
+    </button>
+    <div class="msPopover" role="dialog">
+      <div class="msTop">
+        <input type="text" placeholder="Search…" />
+        <button class="mini" type="button">All</button>
+        <button class="mini" type="button">Clear</button>
+      </div>
+      <div class="msList" role="listbox" aria-multiselectable="true"></div>
+      <div class="msFooter">
+        <span class="count"></span>
+        <span>Click to toggle</span>
+      </div>
+    </div>
+  `;
+
+  const btn = mount.querySelector(".msBtn");
+  const txt = mount.querySelector(".msBtn .txt");
+  const pop = mount.querySelector(".msPopover");
+  const search = mount.querySelector(".msTop input");
+  const btnAll = mount.querySelectorAll(".msTop .mini")[0];
+  const btnClear = mount.querySelectorAll(".msTop .mini")[1];
+  const list = mount.querySelector(".msList");
+  const count = mount.querySelector(".msFooter .count");
+
+  function renderList(){
+    const q = state.search.trim().toLowerCase();
+    list.innerHTML = "";
+
+    const visible = state.options.filter(o => o.toLowerCase().includes(q));
+    visible.forEach(o => {
+      const id = `${mountId}_${o}`.replace(/[^a-zA-Z0-9_]/g,"_");
+      const checked = state.selected.has(o);
+      const row = document.createElement("div");
+      row.className = "msItem";
+      row.innerHTML = `<input id="${id}" type="checkbox" ${checked?"checked":""} />
+                       <label for="${id}" style="cursor:pointer; flex:1 1 auto;">${o}</label>`;
+      row.addEventListener("click", (e) => {
+        // support label click too
+        if (e.target.tagName !== "INPUT") {
+          const cb = row.querySelector("input");
+          cb.checked = !cb.checked;
+        }
+        const cb = row.querySelector("input");
+        if (cb.checked) state.selected.add(o);
+        else state.selected.delete(o);
+        updateBtnText();
+        renderList(); // to keep checkbox state synced
+      });
+      list.appendChild(row);
+    });
+
+    count.textContent = `${state.selected.size}/${state.options.length} selected`;
+  }
+
+  function updateBtnText(){
+    if (state.selected.size === 0){
+      txt.textContent = "None (treated as All)";
+      return;
+    }
+    if (state.selected.size === state.options.length){
+      txt.textContent = placeholderAll;
+      return;
+    }
+    const arr = Array.from(state.selected);
+    txt.textContent = arr.length <= 3 ? arr.join(", ") : `${arr.slice(0,3).join(", ")} +${arr.length-3}`;
+  }
+
+  function open(){
+    state.open = true;
+    pop.classList.add("open");
+    btn.setAttribute("aria-expanded","true");
+    renderList();
+  }
+  function close(){
+    state.open = false;
+    pop.classList.remove("open");
+    btn.setAttribute("aria-expanded","false");
+  }
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.open ? close() : open();
+  });
+  search.addEventListener("input", () => {
+    state.search = search.value;
+    renderList();
+  });
+  btnAll.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.selected = new Set(state.options);
+    updateBtnText();
+    renderList();
+  });
+  btnClear.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.selected = new Set(); // empty == all in filtering logic
+    updateBtnText();
+    renderList();
+  });
+
+  // close on outside click
+  document.addEventListener("click", (e) => {
+    if (!state.open) return;
+    if (!mount.contains(e.target)) close();
+  });
+
+  updateBtnText();
+  return {
+    getSelectedArrayOrNullAll: () => {
+      // Interpret empty set as ALL (to keep "deselect option" without excluding everything)
+      if (state.selected.size === 0 || state.selected.size === state.options.length) return null;
+      return Array.from(state.selected);
+    },
+    setSelected: (arrOrNullAll) => {
+      if (!arrOrNullAll) state.selected = new Set(state.options);
+      else state.selected = new Set(arrOrNullAll);
+      updateBtnText();
+      renderList();
+    },
+    toggleValue: (val) => {
+      if (!state.options.includes(val)) return;
+      // If currently "all" (selected all), treat toggle as narrowing to everything except that?
+      // Keep simple: if all selected, toggling will make only that selected.
+      if (state.selected.size === state.options.length){
+        state.selected = new Set([val]);
+      } else {
+        if (state.selected.has(val)) state.selected.delete(val);
+        else state.selected.add(val);
+      }
+      updateBtnText();
+      renderList();
+    },
+    hasValueActive: (val) => {
+      // Active means selection is not "all", and includes val; OR selection is all -> treat as active but not highlighted
+      if (state.selected.size === 0 || state.selected.size === state.options.length) return false;
+      return state.selected.has(val);
+    }
+  };
+}
+
+/** ========= Build multiselects (compact, not spacy) ========= **/
+const msFY = createMultiSelect({
+  mountId: "msFY",
+  labelPill: "FY",
+  options: fiscalYears,
+  defaultSelected: ["FY26"],
+  placeholderAll: "All FY"
+});
+const msMonth = createMultiSelect({
+  mountId: "msMonth",
+  labelPill: "Month",
+  options: months,
+  defaultSelected: null,
+  placeholderAll: "All Months"
+});
+const msFlex = createMultiSelect({
+  mountId: "msFlex",
+  labelPill: "Flex",
+  options: FLEX_IDS,
+  defaultSelected: null,
+  placeholderAll: "All Flex IDs"
+});
+const msCO = createMultiSelect({
+  mountId: "msCO",
+  labelPill: "CO",
+  options: CO_CODES,
+  defaultSelected: null,
+  placeholderAll: "All CO"
+});
+
+document.getElementById("print").addEventListener("click", () => window.print());
+
+/** ========= Filtering ========= **/
+function getFilters(){
+  return {
+    fys: msFY.getSelectedArrayOrNullAll(),
+    months: msMonth.getSelectedArrayOrNullAll(),
+    flexes: msFlex.getSelectedArrayOrNullAll(),
+    cos: msCO.getSelectedArrayOrNullAll()
+  };
+}
+function applyFiltersToMaster(f){
+  return MASTER_TX.filter(r => {
+    if (f.fys && !f.fys.includes(r.fy)) return false;
+    if (f.months && !f.months.includes(r.month)) return false;
+    if (f.flexes && !f.flexes.includes(r.flexId)) return false;
+    if (f.cos && !f.cos.includes(r.co)) return false;
+    return true;
+  });
+}
+function setActiveFiltersBadge(f){
+  const parts = [
+    f.fys ? f.fys.join(", ") : "All FY",
+    f.months ? (f.months.length<=3 ? f.months.join(", ") : `${f.months.slice(0,3).join(", ")} +${f.months.length-3}`) : "All Months",
+    f.flexes ? (f.flexes.length<=2 ? `Flex ${f.flexes.join(", ")}` : `Flex ${f.flexes.slice(0,2).join(", ")} +${f.flexes.length-2}`) : "All Flex IDs",
+    f.cos ? (f.cos.length<=3 ? f.cos.join(", ") : `${f.cos.slice(0,3).join(", ")} +${f.cos.length-3}`) : "All CO"
+  ];
+  document.getElementById("activeFilters").textContent = parts.join(" • ");
+}
+
+/** ========= Aggregate to nodes ========= **/
+function nodeAggByType(tx){
+  const m = new Map();
+  for (const row of tx){
+    m.set(row.type, (m.get(row.type)||0) + row.amount);
+  }
+  return m;
+}
+function computeCaps(agg){
+  const cap = Math.round(Math.abs(agg) * 1.15 + 2500);
+  const variance = Math.round(agg - (agg >= 0 ? cap : -cap));
+  return {cap, variance};
+}
+function nodeKey(node){
+  if (node.data && node.data.leafType) return node.data.leafType;
+  if (node.leafType) return node.leafType;
+  return (node.data && node.data.name) ? node.data.name : node.name;
+}
+
+/** ========= Tree render (same horizontal layout as the one you liked) ========= **/
+const svg = d3.select("#tree");
+let width = 900, height = 470;
+function resize(){
+  const rect = document.getElementById("tree").getBoundingClientRect();
+  width = rect.width || 900;
+  height = rect.height || 470;
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
+}
+window.addEventListener("resize", () => { resize(); render(currentState); });
+resize();
+
+let root, currentState;
+let selectedNode = null;
+
+function buildHierarchy(){
+  return d3.hierarchy(JSON.parse(JSON.stringify(FLOW)));
+}
+function colorFor(node){
+  const cat = (node.data && node.data.category) ? node.data.category : "neutral";
+  return pastelByCategory[cat] || "#fff";
+}
+function collapse(d, depth){
+  if (!d.children) return;
+  if (depth <= 0){
+    d._children = d.children;
+    d.children = null;
+  } else {
+    d.children.forEach(ch => collapse(ch, depth - 1));
+  }
+}
+
+function render(state){
+  if (!state) return;
+  currentState = state;
+  const tx = state.tx;
+  const aggMap = nodeAggByType(tx);
+
+  svg.selectAll("*").remove();
+
+  root = buildHierarchy();
+  root.children?.forEach(c => collapse(c, 2));
+
+  const treeLayout = d3.tree().size([height - 30, width - 40]);
+  treeLayout(root);
+
+  svg.append("g")
+    .attr("transform","translate(20,15)")
+    .selectAll("path")
+    .data(root.links())
+    .join("path")
+    .attr("class","link")
+    .attr("d", d3.linkHorizontal()
+      .x(d => d.y)
+      .y(d => d.x)
+    );
+
+  const nodeG = svg.append("g")
+    .attr("transform","translate(20,15)")
+    .selectAll("g")
+    .data(root.descendants(), d => nodeKey(d))
+    .join("g")
+    .attr("class", d => (selectedNode && nodeKey(d)===nodeKey(selectedNode)) ? "node selected" : "node")
+    .attr("transform", d => `translate(${d.y},${d.x})`)
+    .style("cursor","pointer")
+    .on("click", (evt, d) => {
+      if (d.children) d._children = d.children, d.children = null;
+      else if (d._children) d.children = d._children, d._children = null;
+      selectedNode = d;
+      updateDetails(d, tx, aggMap);
+      render(state);
+    });
+
+  const boxW = 210, boxH = 44;
+
+  nodeG.append("rect")
+    .attr("x", -6)
+    .attr("y", -boxH/2)
+    .attr("width", boxW)
+    .attr("height", boxH)
+    .attr("fill", d => colorFor(d));
+
+  nodeG.append("text")
+    .attr("x", 10)
+    .attr("y", -4)
+    .attr("dominant-baseline","central")
+    .text(d => d.data.name);
+
+  nodeG.append("text")
+    .attr("class","sub")
+    .attr("x", 10)
+    .attr("y", 14)
+    .attr("dominant-baseline","central")
+    .text(d => {
+      const lt = d.data.leafType;
+      if (!lt) return "";
+      const amt = Math.round(aggMap.get(lt) || 0);
+      return `${fmtUSD(amt)} • ${lt}`;
+    });
+
+  updateSummary(tx);
+  updateChangeOrdersQuickList(tx);
+  if (!selectedNode){
+    selectedNode = root;
+    updateDetails(root, tx, aggMap);
+  }
+}
+
+/** ========= Summary + Details ========= **/
+function updateSummary(tx){
+  const sumBy = (pred) => tx.filter(pred).reduce((a,r)=>a+r.amount,0);
+
+  const contract = sumBy(r => r.type==="fees") + Math.abs(sumBy(r => r.type==="exp_cap"));
+  const projRev = sumBy(r => r.type==="proj_rev");
+  const actRev = sumBy(r => r.type==="act_rev");
+  const projCost = Math.abs(sumBy(r => r.type==="proj_cost"));
+  const projExp = Math.abs(sumBy(r => r.type==="act_exp"));
+  const projMargin = projRev - projCost - projExp;
+
+  document.getElementById("kpiContract").textContent = fmtUSD(Math.round(contract));
+  document.getElementById("kpiProjRev").textContent = fmtUSD(Math.round(projRev));
+  document.getElementById("kpiActRev").textContent = fmtUSD(Math.round(actRev));
+  document.getElementById("kpiProjMargin").textContent = fmtUSD(Math.round(projMargin));
+}
+
+function updateDetails(node, tx, aggMap){
+  document.getElementById("selectedNodeName").textContent = node.data.name;
+
+  const leaves = [];
+  (function walk(n){
+    if (!n.children && !n._children){
+      if (n.data.leafType) leaves.push(n.data.leafType);
+      return;
+    }
+    const kids = n.children || n._children || [];
+    kids.forEach(walk);
+    if (n.data.leafType && kids.length===0) leaves.push(n.data.leafType);
+  })(node);
+
+  if (node.data.leafType) leaves.push(node.data.leafType);
+  const uniqLeaves = Array.from(new Set(leaves)).filter(Boolean);
+
+  const txNode = tx.filter(r => uniqLeaves.includes(r.type));
+  const amount = Math.round(txNode.reduce((a,r)=>a+r.amount,0));
+  const {cap, variance} = computeCaps(amount);
+
+  document.getElementById("kpiAmt").textContent = fmtUSD(amount);
+  document.getElementById("kpiAmtSub").textContent = uniqLeaves.length ? `Mapped types: ${uniqLeaves.slice(0,3).join(", ")}${uniqLeaves.length>3?"…":""}` : "Roll-up node";
+  document.getElementById("kpiCap").textContent = fmtUSD(cap);
+  document.getElementById("kpiCapSub").textContent = "Dummy budget/cap";
+  document.getElementById("kpiVar").textContent = fmtUSD(variance);
+  document.getElementById("kpiVarSub").textContent = (variance>=0) ? "Favorable" : "Unfavorable";
+  document.getElementById("kpiCount").textContent = String(txNode.length);
+
+  const body = document.getElementById("txBody");
+  body.innerHTML = "";
+  txNode.slice(0, 14).forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td class="mono">${r.fy}</td>
+      <td class="mono">${r.month}</td>
+      <td class="mono">${r.flexId}</td>
+      <td class="mono">${r.co}</td>
+      <td class="mono">${r.type}</td>
+      <td class="right mono">${fmtUSD(r.amount)}</td>
+    `;
+    body.appendChild(tr);
+  });
+  if (txNode.length > 14){
+    const tr=document.createElement("tr");
+    tr.innerHTML = `<td colspan="6" class="small">Showing first 14 of ${txNode.length} transactions.</td>`;
+    body.appendChild(tr);
+  }
+}
+
+/** ========= Compact vertical Change Orders list (same tab, minimal space) ========= **/
+function sumForCO(tx, co){
+  return tx.filter(r => r.co === co).reduce((a,r)=>a+r.amount,0);
+}
+function updateChangeOrdersQuickList(tx){
+  const list = document.getElementById("coQuickList");
+  list.innerHTML = "";
+
+  // Show the two common COs first, then the rest (still compact)
+  const ordered = ["CO1","CO2", ...CO_CODES.filter(c => c !== "CO1" && c !== "CO2")].slice(0,5);
+
+  ordered.forEach(co => {
+    const amt = Math.round(sumForCO(tx, co));
+    const row = document.createElement("div");
+    const active = msCO.hasValueActive(co);
+    row.className = "coRow" + (active ? " active" : "");
+    row.innerHTML = `
+      <div class="l"><span class="tag">${co}</span></div>
+      <div class="amt">${fmtUSD(amt)}</div>
+    `;
+    row.addEventListener("click", () => {
+      msCO.toggleValue(co);
+      applyFilters(); // immediate drill without adding extra buttons/space
+    });
+    list.appendChild(row);
+  });
+
+  const activeCos = getFilters().cos;
+  document.getElementById("coCount").textContent =
+    activeCos ? `${activeCos.length} sel` : "All";
+}
+
+/** ========= Apply / Reset ========= **/
+function applyFilters(){
+  const f = getFilters();
+  const tx = applyFiltersToMaster(f);
+  setActiveFiltersBadge(f);
+  selectedNode = selectedNode; // keep selection if possible
+  render({filters: f, tx});
+}
+document.getElementById("apply").addEventListener("click", applyFilters);
+document.getElementById("reset").addEventListener("click", () => {
+  msFY.setSelected(["FY26"]);
+  msMonth.setSelected(null);
+  msFlex.setSelected(null);
+  msCO.setSelected(null);
+  selectedNode = null;
+  applyFilters();
+});
+
+/** ========= Init ========= **/
+applyFilters();
+</script>
+</body>
+</html>
